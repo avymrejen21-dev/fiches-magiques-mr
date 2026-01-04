@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiches Magiques - Révisions IA</title>
+    <meta name="description" content="Crée des fiches de révision intelligentes à partir de tes cours avec l'IA. Import de photos, questions interactives et quiz personnalisés !">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        .sticker {
+            position: absolute;
+            font-size: 3rem;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-100 via-pink-50 to-yellow-100 min-h-screen">
+    <div class="sticker animate-float" style="top:40px;left:40px">✏️</div>
+    <div class="sticker animate-float" style="top:120px;right:80px;animation-delay:0.5s">📚</div>
+    <div class="sticker" style="top:240px;right:40px">⭐</div>
+    <div class="sticker animate-pulse" style="top:160px;left:33%">🌟</div>
+
+    <div class="max-w-4xl mx-auto p-4 pb-24 relative z-10">
+        <header class="text-center mb-10 pt-8">
+            <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border-4 border-purple-300 inline-block">
+                <div class="flex items-center justify-center gap-4 mb-3">
+                    <span class="text-5xl">📖</span>
+                    <h1 class="text-5xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 bg-clip-text text-transparent">Fiches Magiques</h1>
+                    <span class="text-5xl">✨</span>
+                </div>
+                <p class="text-xl text-purple-700 font-semibold">Transforme tes cours en révisions fun ! 🎉</p>
+            </div>
+        </header>
+
+        <div id="inputSection" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border-4 border-pink-300 relative">
+            <h2 class="text-3xl font-black text-gray-800 mb-6 flex items-center gap-3">
+                <span class="text-4xl">📄</span>
+                Entre ta leçon ici !
+            </h2>
+            <textarea id="lessonInput" placeholder="Colle ton cours, tes notes, tes formules... tout ce que tu veux réviser ! 📝" class="w-full h-72 p-6 border-4 border-purple-200 rounded-2xl focus:border-pink-400 focus:outline-none resize-none text-gray-800 text-lg bg-gradient-to-br from-purple-50 to-pink-50 font-medium shadow-inner"></textarea>
+            
+            <div class="mt-8">
+                <label class="flex items-center justify-center gap-3 w-full p-6 border-4 border-dashed border-yellow-300 rounded-2xl cursor-pointer hover:border-pink-400 transition-all bg-white shadow-lg">
+                    <span class="text-5xl">📸</span>
+                    <span class="text-gray-700 font-bold text-lg">Ajoute des photos de ton cours !</span>
+                    <input type="file" id="imageInput" accept="image/*" multiple class="hidden">
+                </label>
+            </div>
+
+            <div id="imagePreview" class="mt-6 grid grid-cols-2 gap-4 hidden"></div>
+            
+            <button id="generateBtn" class="w-full mt-8 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:scale-105 transform transition-all">
+                ⚡ Créer ma fiche magique ! 🚀
+            </button>
+        </div>
+
+        <div id="reviewSection" class="hidden"></div>
+    </div>
+
+    <footer class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-600 py-4 text-center z-20 border-t-4 border-white shadow-2xl">
+        <p class="text-white font-black text-lg">✨ Créé par <span class="text-yellow-200">Avy Mrejen</span> ✨</p>
+    </footer>
+
+    <script>
+        let images = [];
+        let sheet = null;
+        let answers = {};
+        
+        const inp = document.getElementById('lessonInput');
+        const imgInp = document.getElementById('imageInput');
+        const preview = document.getElementById('imagePreview');
+        const genBtn = document.getElementById('generateBtn');
+        const inSec = document.getElementById('inputSection');
+        const revSec = document.getElementById('reviewSection');
+
+        imgInp.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(function(f) {
+                if (f.type.startsWith('image/')) {
+                    const r = new FileReader();
+                    r.onload = function(ev) {
+                        images.push({data: ev.target.result, name: f.name});
+                        showImages();
+                    };
+                    r.readAsDataURL(f);
+                }
+            });
+        });
+
+        function showImages() {
+            if (images.length === 0) {
+                preview.classList.add('hidden');
+                return;
+            }
+            preview.classList.remove('hidden');
+            preview.innerHTML = images.map(function(im, i) {
+                return '<div class="relative group"><img src="' + im.data + '" class="w-full h-40 object-cover rounded-2xl border-4 border-purple-200"><button onclick="removeImg(' + i + ')" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100">✕</button><p class="text-sm text-purple-700 mt-2 truncate font-semibold">' + im.name + '</p></div>';
+            }).join('');
+        }
+
+        function removeImg(i) {
+            images.splice(i, 1);
+            showImages();
+        }
+
+        genBtn.addEventListener('click', async function() {
+            const txt = inp.value.trim();
+            if (!txt && images.length === 0) {
+                alert('Entre ta leçon ou ajoute des images ! 📝');
+                return;
+            }
+            genBtn.disabled = true;
+            genBtn.innerHTML = '<div class="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin inline-block"></div> Magie en cours...';
+            
+            try {
+                const msg = [];
+                images.forEach(function(im) {
+                    msg.push({
+                        type: "image",
+                        source: {
+                            type: "base64",
+                            media_type: "image/jpeg",
+                            data: im.data.split(',')[1]
+                        }
+                    });
+                });
+                
+                const promptText = 'Tu es un assistant pédagogique expert. Crée une fiche de révision TRÈS DÉTAILLÉE au format JSON avec: titre, resume (4-6 phrases détaillées), points_cles (6-8 points avec explications), definitions (termes techniques avec définitions), formules_dates (formules et dates importantes), pieges_erreurs (pièges à éviter), astuces_memorisation (moyens mnémotechniques), exemples_concrets (applications pratiques), questions (8-12 questions: 50% QCM avec options/reponse/explication, 50% ouvertes avec reponse/points_importants), pour_aller_plus_loin (notions connexes). Leçon: ' + (txt || 'Basé sur les images fournies') + '. Réponds UNIQUEMENT avec le JSON complet, sans backticks ni texte supplémentaire.';
+                
+                msg.push({type: "text", text: promptText});
+                
+                const res = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        model: "claude-sonnet-4-20250514",
+                        max_tokens: 4000,
+                        messages: [{role: "user", content: msg}]
+                    })
+                });
+                
+                const data = await res.json();
+                const content = data.content[0].text.trim().replace(/```json|```/g, '');
+                sheet = JSON.parse(content);
+                showSheet();
+                inSec.classList.add('hidden');
+                revSec.classList.remove('hidden');
+                window.scrollTo(0, 0);
+            } catch(e) {
+                console.error(e);
+                alert('Erreur lors de la génération. Réessaye ! 🔄');
+            } finally {
+                genBtn.disabled = false;
+                genBtn.innerHTML = '⚡ Créer ma fiche magique ! 🚀';
+            }
+        });
+
+        function showSheet() {
+            let html = '<div class="bg-white/90 rounded-3xl shadow-2xl p-8 border-4 border-yellow-300 mb-8">';
+            html += '<h2 class="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">🎯 ' + sheet.titre + '</h2>';
+            html += '<div class="mb-6 bg-purple-50 p-6 rounded-2xl border-3 border-purple-200"><h3 class="text-2xl font-black text-purple-700 mb-3">💡 Résumé détaillé</h3><p class="text-gray-800 text-lg leading-relaxed">' + sheet.resume + '</p></div>';
+            html += '<div class="bg-yellow-50 p-6 rounded-2xl border-3 border-yellow-200"><h3 class="text-2xl font-black text-yellow-700 mb-4">⭐ Points super importants !</h3><ul class="space-y-3">';
+            
+            sheet.points_cles.forEach(function(p) {
+                html += '<li class="flex items-start gap-3 bg-white p-4 rounded-xl shadow-md border-2 border-yellow-200"><span class="text-2xl flex-shrink-0">✨</span><span class="text-gray-800 font-semibold text-lg">' + p + '</span></li>';
+            });
+            html += '</ul></div>';
+            
+            if (sheet.definitions && sheet.definitions.length > 0) {
+                html += '<div class="mt-6 bg-green-50 p-6 rounded-2xl border-3 border-green-200"><h3 class="text-2xl font-black text-green-700 mb-4">📖 Définitions à connaître</h3><div class="space-y-4">';
+                sheet.definitions.forEach(function(d) {
+                    html += '<div class="bg-white p-4 rounded-xl shadow-md border-2 border-green-200"><p class="font-black text-green-700 text-lg mb-2">' + d.terme + '</p><p class="text-gray-800 font-medium">' + d.definition + '</p></div>';
+                });
+                html += '</div></div>';
+            }
+
+            if (sheet.formules_dates && sheet.formules_dates.length > 0) {
+                html += '<div class="mt-6 bg-orange-50 p-6 rounded-2xl border-3 border-orange-200"><h3 class="text-2xl font-black text-orange-700 mb-4">🔢 Formules, dates & chiffres clés</h3><ul class="space-y-3">';
+                sheet.formules_dates.forEach(function(f) {
+                    html += '<li class="flex items-start gap-3 bg-white p-4 rounded-xl shadow-md border-2 border-orange-200"><span class="text-2xl flex-shrink-0">📌</span><span class="text-gray-800 font-semibold text-lg">' + f + '</span></li>';
+                });
+                html += '</ul></div>';
+            }
+            
+            if (sheet.astuces_memorisation && sheet.astuces_memorisation.length > 0) {
+                html += '<div class="mt-6 bg-indigo-50 p-6 rounded-2xl border-3 border-indigo-200"><h3 class="text-2xl font-black text-indigo-700 mb-4">🧠 Astuces pour retenir facilement</h3><ul class="space-y-3">';
+                sheet.astuces_memorisation.forEach(function(a) {
+                    html += '<li class="flex items-start gap-3 bg-white p-4 rounded-xl shadow-md border-2 border-indigo-200"><span class="text-2xl flex-shrink-0">💭</span><span class="text-gray-800 font-semibold text-lg">' + a + '</span></li>';
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div><div class="bg-white/90 rounded-3xl shadow-2xl p-8 border-4 border-pink-300"><h3 class="text-3xl font-black mb-8 flex items-center gap-3"><span class="text-4xl">🎓</span>Quiz time ! Montre ce que tu sais !</h3><div id="qCont"></div>';
+            html += '<button id="checkBtn" class="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-white py-6 rounded-2xl font-black text-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 border-4 border-white shadow-xl hover:scale-105 transform mt-6"><span>✅</span>Vérifier mes réponses ! 🎯</button>';
+            html += '<div id="resCont" class="hidden mt-6"></div></div>';
+            
+            revSec.innerHTML = html;
+            showQs();
+            document.getElementById('checkBtn').addEventListener('click', check);
+        }
+
+        function showQs() {
+            const c = document.getElementById('qCont');
+            let qhtml = '';
+            
+            sheet.questions.forEach(function(q, i) {
+                qhtml += '<div class="mb-8 pb-8 border-b-4 border-purple-200 last:border-0">';
+                qhtml += '<p class="text-xl font-bold text-gray-800 mb-4 flex items-start gap-3 bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-xl border-2 border-purple-300"><span class="text-2xl flex-shrink-0">❓</span><span>' + (i+1) + '. ' + q.question + '</span></p>';
+                
+                if (q.type === 'qcm') {
+                    qhtml += '<div class="space-y-3">';
+                    q.options.forEach(function(o) {
+                        qhtml += '<label class="flex items-center gap-4 p-5 rounded-xl border-3 border-gray-300 bg-white hover:border-pink-400 hover:shadow-lg cursor-pointer transition-all shadow-md font-semibold text-lg opt" data-q="' + i + '" data-v="' + o + '">';
+                        qhtml += '<input type="radio" name="q' + i + '" value="' + o + '" class="w-5 h-5 text-purple-600"><span class="text-gray-800">' + o + '</span></label>';
+                    });
+                    qhtml += '<div class="qcm-exp-' + i + ' hidden"></div></div>';
+                } else {
+                    qhtml += '<div><textarea id="open-' + i + '" placeholder="Écris ta réponse ici... 📝" class="w-full p-5 border-3 border-purple-200 rounded-xl focus:border-pink-400 focus:outline-none resize-none bg-gradient-to-br from-purple-50 to-pink-50 font-medium text-lg shadow-inner" rows="4"></textarea>';
+                    qhtml += '<div id="ans-' + i + '" class="hidden mt-4"></div></div>';
+                }
+                qhtml += '</div>';
+            });
+            
+            c.innerHTML = qhtml;
+        }
+
+        function check() {
+            let score = 0;
+            let total = 0;
+            
+            sheet.questions.forEach(function(q, i) {
+                if (q.type === 'qcm') {
+                    total++;
+                    const sel = document.querySelector('input[name="q' + i + '"]:checked');
+                    answers[i] = sel ? sel.value : null;
+                    
+                    const opts = document.querySelectorAll('[data-q="' + i + '"]');
+                    opts.forEach(function(o) {
+                        const v = o.getAttribute('data-v');
+                        o.classList.remove('hover:border-pink-400', 'hover:shadow-lg', 'cursor-pointer');
+                        o.querySelector('input').disabled = true;
+                        if (v === q.reponse) {
+                            o.classList.add('bg-gradient-to-r', 'from-green-100', 'to-green-200', 'border-green-500');
+                            o.innerHTML += '<span class="ml-auto text-green-600 text-2xl">✓</span>';
+                            if (answers[i] === v) score++;
+                        } else if (answers[i] === v) {
+                            o.classList.add('bg-gradient-to-r', 'from-red-100', 'to-red-200', 'border-red-500');
+                            o.innerHTML += '<span class="ml-auto text-red-600 text-2xl">✗</span>';
+                        }
+                    });
+
+                    if (q.explication) {
+                        const expDiv = document.querySelector('.qcm-exp-' + i);
+                        expDiv.innerHTML = '<div class="mt-4 p-5 bg-gradient-to-r from-blue-100 to-cyan-100 border-3 border-blue-400 rounded-xl shadow-lg"><p class="text-sm font-black text-blue-800 mb-2 flex items-center gap-2"><span class="text-xl">💡</span>Explication :</p><p class="text-blue-700 font-semibold text-lg">' + q.explication + '</p></div>';
+                        expDiv.classList.remove('hidden');
+                    }
+                } else {
+                    const openEl = document.getElementById('open-' + i);
+                    answers[i] = openEl.value;
+                    openEl.disabled = true;
+                    
+                    let ansHtml = '<div class="p-5 bg-gradient-to-r from-blue-100 to-cyan-100 border-3 border-blue-400 rounded-xl shadow-lg"><p class="text-sm font-black text-blue-800 mb-2 flex items-center gap-2"><span class="text-xl">💡</span>Réponse attendue :</p><p class="text-blue-700 font-semibold text-lg">' + q.reponse + '</p></div>';
+                    
+                    if (q.points_importants && q.points_importants.length > 0) {
+                        ansHtml += '<div class="mt-4 p-5 bg-gradient-to-r from-green-100 to-emerald-100 border-3 border-green-400 rounded-xl shadow-lg"><p class="text-sm font-black text-green-800 mb-3 flex items-center gap-2"><span class="text-xl">✅</span>Points importants à mentionner :</p><ul class="space-y-2">';
+                        q.points_importants.forEach(function(pt) {
+                            ansHtml += '<li class="flex items-start gap-2 text-green-700 font-semibold"><span class="text-lg">•</span><span>' + pt + '</span></li>';
+                        });
+                        ansHtml += '</ul></div>';
+                    }
+                    
+                    document.getElementById('ans-' + i).innerHTML = ansHtml;
+                    document.getElementById('ans-' + i).classList.remove('hidden');
+                }
+            });
+            
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+            let message = score === total ? 'Parfait ! Tu es un(e) champion(ne) ! 🏆' : (score >= total / 2 ? 'Bien joué ! Continue comme ça ! 🌟' : 'Courage ! Relis ta leçon ! 💪');
+            
+            document.getElementById('resCont').innerHTML = '<div class="bg-gradient-to-r from-yellow-200 via-pink-200 to-purple-200 border-4 border-yellow-400 rounded-2xl p-8 text-center shadow-2xl relative"><div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-5xl">🏆</div><p class="text-4xl font-black text-purple-800 mt-4 mb-2">Score: ' + score + ' / ' + total + '</p><p class="text-2xl font-bold text-pink-700">' + message + '</p></div><button onclick="location.reload()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-6 rounded-2xl font-black text-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 border-4 border-white shadow-xl hover:scale-105 transform mt-4"><span>🔄</span>Nouvelle leçon ! 🚀</button>';
+            document.getElementById('resCont').classList.remove('hidden');
+            document.getElementById('checkBtn').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
